@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Pencil } from "lucide-react";
 import { Profissional } from "@/lib/types";
-import { NovoProfissionalDialog } from "@/components/profissionais/novo-profissional-dialog";
+import { ProfissionalDialog } from "@/components/profissionais/profissional-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ interface ProfissionaisViewProps {
 export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
   const [busca, setBusca] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [profissionalEmEdicao, setProfissionalEmEdicao] = useState<Profissional | undefined>();
 
   const profissionaisFiltrados = useMemo(() => {
     if (!busca.trim()) return profissionais;
@@ -35,8 +36,19 @@ export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
   }, [profissionais, busca]);
 
   const cpfsExistentes = profissionais
+    .filter((p) => p.id !== profissionalEmEdicao?.id)
     .map((p) => p.cpf)
     .filter((cpf): cpf is string => Boolean(cpf));
+
+  function abrirNovo() {
+    setProfissionalEmEdicao(undefined);
+    setDialogAberto(true);
+  }
+
+  function abrirEdicao(profissional: Profissional) {
+    setProfissionalEmEdicao(profissional);
+    setDialogAberto(true);
+  }
 
   return (
     <div className="p-8">
@@ -44,12 +56,13 @@ export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
         <div>
           <h1 className="text-2xl font-bold">Profissionais</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {profissionais.length} profissional
-            {profissionais.length !== 1 ? "is" : ""} cadastrado
-            {profissionais.length !== 1 ? "s" : ""}
+            {profissionais.length}{" "}
+            {profissionais.length === 1
+              ? "profissional cadastrado"
+              : "profissionais cadastrados"}
           </p>
         </div>
-        <Button onClick={() => setDialogAberto(true)}>
+        <Button onClick={abrirNovo}>
           <UserPlus className="size-4" />
           Novo profissional
         </Button>
@@ -74,13 +87,14 @@ export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
               <TableHead>Especialidades</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {profissionaisFiltrados.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-center text-muted-foreground py-12"
                 >
                   {busca
@@ -110,6 +124,16 @@ export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
                       {profissional.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Editar profissional"
+                      onClick={() => abrirEdicao(profissional)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -117,10 +141,11 @@ export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
         </Table>
       </div>
 
-      <NovoProfissionalDialog
+      <ProfissionalDialog
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         cpfsExistentes={cpfsExistentes}
+        profissional={profissionalEmEdicao}
       />
     </div>
   );

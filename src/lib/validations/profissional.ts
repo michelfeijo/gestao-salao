@@ -21,6 +21,7 @@ export const profissionalSchema = z.object({
   cor: z.string().min(1, "Cor obrigatória"),
   dataInicio: z.string().optional(),
   observacoes: z.string().optional(),
+  ativo: z.boolean(),
 });
 
 export type ProfissionalFormData = z.infer<typeof profissionalSchema>;

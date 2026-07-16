@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -10,8 +10,9 @@ import {
 } from "@/lib/validations/profissional";
 import { maskCPF, maskTelefone } from "@/lib/utils/cpf";
 import { CORES_AGENDA, corAleatoria } from "@/lib/utils/cor";
-import { criarProfissional } from "@/app/profissionais/actions";
+import { criarProfissional, atualizarProfissional } from "@/app/profissionais/actions";
 import { cn } from "@/lib/utils";
+import type { Profissional } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -24,19 +25,53 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 
-interface NovoProfissionalDialogProps {
+interface ProfissionalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cpfsExistentes: string[];
+  profissional?: Profissional;
 }
 
-export function NovoProfissionalDialog({
+function valoresIniciais(profissional?: Profissional): ProfissionalFormData {
+  if (!profissional) {
+    return {
+      nome: "",
+      telefone: "",
+      email: "",
+      cpf: "",
+      cargo: "",
+      especialidades: "",
+      cor: corAleatoria(),
+      dataInicio: "",
+      observacoes: "",
+      ativo: true,
+    };
+  }
+
+  return {
+    nome: profissional.nome,
+    telefone: profissional.telefone,
+    email: profissional.email ?? "",
+    cpf: profissional.cpf ?? "",
+    cargo: profissional.cargo,
+    especialidades: profissional.especialidades ?? "",
+    cor: profissional.cor,
+    dataInicio: profissional.dataInicio ?? "",
+    observacoes: profissional.observacoes ?? "",
+    ativo: profissional.ativo,
+  };
+}
+
+export function ProfissionalDialog({
   open,
   onOpenChange,
   cpfsExistentes,
-}: NovoProfissionalDialogProps) {
+  profissional,
+}: ProfissionalDialogProps) {
   const [erroSubmit, setErroSubmit] = useState<string | null>(null);
+  const editando = Boolean(profissional);
 
   const {
     register,
@@ -47,8 +82,12 @@ export function NovoProfissionalDialog({
     formState: { errors, isSubmitting },
   } = useForm<ProfissionalFormData>({
     resolver: zodResolver(profissionalSchema),
-    defaultValues: { cor: corAleatoria() },
+    defaultValues: valoresIniciais(profissional),
   });
+
+  useEffect(() => {
+    if (open) reset(valoresIniciais(profissional));
+  }, [open, profissional, reset]);
 
   async function onSubmit(data: ProfissionalFormData) {
     const cpfLimpo = data.cpf?.replace(/\D/g, "");
@@ -64,19 +103,19 @@ export function NovoProfissionalDialog({
     }
 
     setErroSubmit(null);
-    const result = await criarProfissional(data);
+    const result = profissional
+      ? await atualizarProfissional(profissional.id, data)
+      : await criarProfissional(data);
 
     if (result?.error) {
       setErroSubmit(result.error);
       return;
     }
 
-    reset({ cor: corAleatoria() });
     onOpenChange(false);
   }
 
   function handleClose() {
-    reset({ cor: corAleatoria() });
     setErroSubmit(null);
     onOpenChange(false);
   }
@@ -89,10 +128,38 @@ export function NovoProfissionalDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Profissional</DialogTitle>
+          <DialogTitle>
+            {editando ? "Editar Profissional" : "Novo Profissional"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {editando && (
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <div>
+                <p className="text-sm font-medium">Status</p>
+                <p className="text-xs text-muted-foreground">
+                  Profissionais inativos não aparecem na agenda.
+                </p>
+              </div>
+              <Controller
+                name="ativo"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {field.value ? "Ativo" : "Inativo"}
+                    </span>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </div>
+                )}
+              />
+            </div>
+          )}
+
           {/* Dados Pessoais */}
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -122,7 +189,6 @@ export function NovoProfissionalDialog({
                 <Controller
                   name="telefone"
                   control={control}
-                  defaultValue=""
                   render={({ field }) => (
                     <Input
                       id="telefone"
@@ -160,7 +226,6 @@ export function NovoProfissionalDialog({
                 <Controller
                   name="cpf"
                   control={control}
-                  defaultValue=""
                   render={({ field }) => (
                     <Input
                       id="cpf"
@@ -195,7 +260,6 @@ export function NovoProfissionalDialog({
                   id="cargo"
                   {...register("cargo")}
                   className="h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  defaultValue=""
                 >
                   <option value="">Selecione...</option>
                   {CARGOS.map((cargo) => (
@@ -292,7 +356,11 @@ export function NovoProfissionalDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar profissional"}
+              {isSubmitting
+                ? "Salvando..."
+                : editando
+                  ? "Salvar alterações"
+                  : "Salvar profissional"}
             </Button>
           </DialogFooter>
         </form>
