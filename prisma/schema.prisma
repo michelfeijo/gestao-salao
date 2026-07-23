@@ -12,9 +12,41 @@ datasource db {
   provider = "postgresql"
 }
 
+model Salao {
+  id        String   @id @default(cuid())
+  nome      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios          Usuario[]
+  clientes          Cliente[]
+  profissionais     Profissional[]
+  categoriasServico CategoriaServico[]
+  servicos          Servico[]
+
+  @@map("saloes")
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  role      String   @default("admin")
+  idSalao   String
+  salao     Salao    @relation(fields: [idSalao], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([idSalao])
+  @@map("usuarios")
+}
+
 model Cliente {
   id             String   @id @default(cuid())
-  cpf            String   @unique
+  idSalao        String
+  salao          Salao    @relation(fields: [idSalao], references: [id])
+  cpf            String
   nome           String
   telefone       String
   dataNascimento DateTime @db.Date
@@ -31,23 +63,68 @@ model Cliente {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@unique([idSalao, cpf])
+  @@index([idSalao])
   @@map("clientes")
 }
 
 model Profissional {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
+  idSalao        String
+  salao          Salao     @relation(fields: [idSalao], references: [id])
   nome           String
   telefone       String
   email          String?
-  cpf            String?  @unique
+  cpf            String?
   cargo          String
   especialidades String?
   cor            String
   dataInicio     DateTime? @db.Date
-  ativo          Boolean  @default(true)
-  observacoes    String?  @db.Text
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  ativo          Boolean   @default(true)
+  observacoes    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
+  servicos Servico[]
+
+  @@unique([idSalao, cpf])
+  @@index([idSalao])
   @@map("profissionais")
+}
+
+model CategoriaServico {
+  id        String   @id @default(cuid())
+  idSalao   String
+  salao     Salao    @relation(fields: [idSalao], references: [id])
+  nome      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  servicos Servico[]
+
+  @@unique([idSalao, nome])
+  @@index([idSalao])
+  @@map("categorias_servico")
+}
+
+model Servico {
+  id             String           @id @default(cuid())
+  idSalao        String
+  salao          Salao            @relation(fields: [idSalao], references: [id])
+  nome           String
+  idCategoria    String
+  categoria      CategoriaServico @relation(fields: [idCategoria], references: [id])
+  duracaoMinutos Int
+  preco          Decimal          @db.Decimal(10, 2)
+  ativo          Boolean          @default(true)
+  observacoes    String?          @db.Text
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  profissionais Profissional[]
+
+  @@unique([idSalao, nome])
+  @@index([idSalao])
+  @@index([idCategoria])
+  @@map("servicos")
 }

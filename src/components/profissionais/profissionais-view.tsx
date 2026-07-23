@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, UserPlus, Pencil } from "lucide-react";
-import { Profissional } from "@/lib/types";
+import { Profissional, Servico } from "@/lib/types";
 import { ProfissionalDialog } from "@/components/profissionais/profissional-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,10 @@ import {
 
 interface ProfissionaisViewProps {
   profissionais: Profissional[];
+  servicos: Servico[];
 }
 
-export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
+export function ProfissionaisView({ profissionais, servicos }: ProfissionaisViewProps) {
   const [busca, setBusca] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
   const [profissionalEmEdicao, setProfissionalEmEdicao] = useState<Profissional | undefined>();
@@ -146,6 +147,7 @@ export function ProfissionaisView({ profissionais }: ProfissionaisViewProps) {
         onOpenChange={setDialogAberto}
         cpfsExistentes={cpfsExistentes}
         profissional={profissionalEmEdicao}
+        servicos={servicos}
       />
     </div>
   );

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { clienteSchema, type ClienteFormData } from "@/lib/validations/cliente";
 import { maskCPF, maskTelefone, maskCEP } from "@/lib/utils/cpf";
-import { criarCliente } from "@/app/clientes/actions";
+import { criarCliente, atualizarCliente } from "@/app/clientes/actions";
+import type { Cliente } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -20,20 +21,61 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
-interface NovoClienteDialogProps {
+interface ClienteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cpfsExistentes: string[];
+  cliente?: Cliente;
 }
 
-export function NovoClienteDialog({
+function valoresIniciais(cliente?: Cliente): ClienteFormData {
+  if (!cliente) {
+    return {
+      cpf: "",
+      nome: "",
+      telefone: "",
+      dataNascimento: "",
+      genero: "",
+      email: "",
+      cep: "",
+      rua: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      observacoes: "",
+    };
+  }
+
+  return {
+    cpf: cliente.cpf,
+    nome: cliente.nome,
+    telefone: cliente.telefone,
+    dataNascimento: cliente.dataNascimento,
+    genero: cliente.genero,
+    email: cliente.email ?? "",
+    cep: cliente.cep ?? "",
+    rua: cliente.rua ?? "",
+    numero: cliente.numero ?? "",
+    complemento: cliente.complemento ?? "",
+    bairro: cliente.bairro ?? "",
+    cidade: cliente.cidade ?? "",
+    estado: cliente.estado ?? "",
+    observacoes: cliente.observacoes ?? "",
+  };
+}
+
+export function ClienteDialog({
   open,
   onOpenChange,
   cpfsExistentes,
-}: NovoClienteDialogProps) {
+  cliente,
+}: ClienteDialogProps) {
   const [buscandoCEP, setBuscandoCEP] = useState(false);
   const [erroCEP, setErroCEP] = useState<string | null>(null);
   const [erroSubmit, setErroSubmit] = useState<string | null>(null);
+  const editando = Boolean(cliente);
 
   const {
     register,
@@ -45,7 +87,12 @@ export function NovoClienteDialog({
     formState: { errors, isSubmitting },
   } = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
+    defaultValues: valoresIniciais(cliente),
   });
+
+  useEffect(() => {
+    if (open) reset(valoresIniciais(cliente));
+  }, [open, cliente, reset]);
 
   async function buscarCEP(cep: string) {
     const digits = cep.replace(/\D/g, "");
@@ -83,19 +130,19 @@ export function NovoClienteDialog({
     }
 
     setErroSubmit(null);
-    const result = await criarCliente(data);
+    const result = cliente
+      ? await atualizarCliente(cliente.id, data)
+      : await criarCliente(data);
 
     if (result?.error) {
       setErroSubmit(result.error);
       return;
     }
 
-    reset();
     onOpenChange(false);
   }
 
   function handleClose() {
-    reset();
     setErroCEP(null);
     setErroSubmit(null);
     onOpenChange(false);
@@ -109,7 +156,7 @@ export function NovoClienteDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Cliente</DialogTitle>
+          <DialogTitle>{editando ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -127,7 +174,6 @@ export function NovoClienteDialog({
                 <Controller
                   name="cpf"
                   control={control}
-                  defaultValue=""
                   render={({ field }) => (
                     <Input
                       id="cpf"
@@ -165,7 +211,6 @@ export function NovoClienteDialog({
                 <Controller
                   name="telefone"
                   control={control}
-                  defaultValue=""
                   render={({ field }) => (
                     <Input
                       id="telefone"
@@ -255,7 +300,6 @@ export function NovoClienteDialog({
                   <Controller
                     name="cep"
                     control={control}
-                    defaultValue=""
                     render={({ field }) => (
                       <Input
                         id="cep"
@@ -384,7 +428,11 @@ export function NovoClienteDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar cliente"}
+              {isSubmitting
+                ? "Salvando..."
+                : editando
+                  ? "Salvar alterações"
+                  : "Salvar cliente"}
             </Button>
           </DialogFooter>
         </form>

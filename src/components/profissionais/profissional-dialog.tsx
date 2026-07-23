@@ -12,7 +12,7 @@ import { maskCPF, maskTelefone } from "@/lib/utils/cpf";
 import { CORES_AGENDA, corAleatoria } from "@/lib/utils/cor";
 import { criarProfissional, atualizarProfissional } from "@/app/profissionais/actions";
 import { cn } from "@/lib/utils";
-import type { Profissional } from "@/lib/types";
+import type { Profissional, Servico } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ interface ProfissionalDialogProps {
   onOpenChange: (open: boolean) => void;
   cpfsExistentes: string[];
   profissional?: Profissional;
+  servicos: Servico[];
 }
 
 function valoresIniciais(profissional?: Profissional): ProfissionalFormData {
@@ -47,6 +48,7 @@ function valoresIniciais(profissional?: Profissional): ProfissionalFormData {
       dataInicio: "",
       observacoes: "",
       ativo: true,
+      servicoIds: [],
     };
   }
 
@@ -61,6 +63,7 @@ function valoresIniciais(profissional?: Profissional): ProfissionalFormData {
     dataInicio: profissional.dataInicio ?? "",
     observacoes: profissional.observacoes ?? "",
     ativo: profissional.ativo,
+    servicoIds: profissional.servicoIds,
   };
 }
 
@@ -69,6 +72,7 @@ export function ProfissionalDialog({
   onOpenChange,
   cpfsExistentes,
   profissional,
+  servicos,
 }: ProfissionalDialogProps) {
   const [erroSubmit, setErroSubmit] = useState<string | null>(null);
   const editando = Boolean(profissional);
@@ -327,6 +331,76 @@ export function ProfissionalDialog({
                 )}
               </div>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Serviços realizados */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Serviços realizados{" "}
+              <span className="font-normal normal-case tracking-normal">
+                (opcional)
+              </span>
+            </p>
+            {servicos.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Nenhum serviço ativo cadastrado ainda.
+              </p>
+            ) : (
+              <Controller
+                name="servicoIds"
+                control={control}
+                render={({ field }) => {
+                  const grupos = servicos.reduce<Record<string, Servico[]>>(
+                    (acc, servico) => {
+                      const grupo = servico.categoriaNome ?? "Sem categoria";
+                      acc[grupo] = acc[grupo] ?? [];
+                      acc[grupo].push(servico);
+                      return acc;
+                    },
+                    {}
+                  );
+
+                  function toggle(id: string) {
+                    const atual = field.value ?? [];
+                    field.onChange(
+                      atual.includes(id)
+                        ? atual.filter((s) => s !== id)
+                        : [...atual, id]
+                    );
+                  }
+
+                  return (
+                    <div className="max-h-48 overflow-y-auto rounded-lg border p-3 space-y-3">
+                      {Object.entries(grupos).map(([categoria, itens]) => (
+                        <div key={categoria} className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {categoria}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {itens.map((servico) => (
+                              <label
+                                key={servico.id}
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="size-3.5 rounded border-input"
+                                  checked={(field.value ?? []).includes(servico.id)}
+                                  onChange={() => toggle(servico.id)}
+                                />
+                                {servico.nome}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }}
+              />
+            )}
           </div>
 
           <Separator />

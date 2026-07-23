@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Pencil } from "lucide-react";
 import { Cliente } from "@/lib/types";
-import { NovoClienteDialog } from "@/components/clientes/novo-cliente-dialog";
+import { ClienteDialog } from "@/components/clientes/cliente-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +34,7 @@ interface ClientesViewProps {
 export function ClientesView({ clientes }: ClientesViewProps) {
   const [busca, setBusca] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [clienteEmEdicao, setClienteEmEdicao] = useState<Cliente | undefined>();
 
   const clientesFiltrados = useMemo(() => {
     const termo = busca.toLowerCase().replace(/\D/g, "") || busca.toLowerCase();
@@ -46,7 +47,19 @@ export function ClientesView({ clientes }: ClientesViewProps) {
     });
   }, [clientes, busca]);
 
-  const cpfsExistentes = clientes.map((c) => c.cpf);
+  const cpfsExistentes = clientes
+    .filter((c) => c.id !== clienteEmEdicao?.id)
+    .map((c) => c.cpf);
+
+  function abrirNovo() {
+    setClienteEmEdicao(undefined);
+    setDialogAberto(true);
+  }
+
+  function abrirEdicao(cliente: Cliente) {
+    setClienteEmEdicao(cliente);
+    setDialogAberto(true);
+  }
 
   return (
     <div className="p-8">
@@ -58,7 +71,7 @@ export function ClientesView({ clientes }: ClientesViewProps) {
             cadastrado{clientes.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={() => setDialogAberto(true)}>
+        <Button onClick={abrirNovo}>
           <UserPlus className="size-4" />
           Novo cliente
         </Button>
@@ -84,13 +97,14 @@ export function ClientesView({ clientes }: ClientesViewProps) {
               <TableHead>Nascimento</TableHead>
               <TableHead>Gênero</TableHead>
               <TableHead>Cidade</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {clientesFiltrados.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center text-muted-foreground py-12"
                 >
                   {busca
@@ -100,7 +114,7 @@ export function ClientesView({ clientes }: ClientesViewProps) {
               </TableRow>
             ) : (
               clientesFiltrados.map((cliente) => (
-                <TableRow key={cliente.cpf}>
+                <TableRow key={cliente.id}>
                   <TableCell className="font-medium">{cliente.nome}</TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
                     {cliente.cpf}
@@ -113,6 +127,16 @@ export function ClientesView({ clientes }: ClientesViewProps) {
                       ? `${cliente.cidade}${cliente.estado ? ` / ${cliente.estado}` : ""}`
                       : "—"}
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Editar cliente"
+                      onClick={() => abrirEdicao(cliente)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -120,10 +144,11 @@ export function ClientesView({ clientes }: ClientesViewProps) {
         </Table>
       </div>
 
-      <NovoClienteDialog
+      <ClienteDialog
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         cpfsExistentes={cpfsExistentes}
+        cliente={clienteEmEdicao}
       />
     </div>
   );

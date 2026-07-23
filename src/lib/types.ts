@@ -1,9 +1,12 @@
 import type {
   Cliente as ClienteDb,
   Profissional as ProfissionalDb,
+  CategoriaServico as CategoriaServicoDb,
+  Servico as ServicoDb,
 } from "@/generated/prisma/client";
 
 export interface Cliente {
+  id: string;
   cpf: string;
   nome: string;
   telefone: string;
@@ -22,6 +25,7 @@ export interface Cliente {
 
 export function toCliente(row: ClienteDb): Cliente {
   return {
+    id: row.id,
     cpf: row.cpf,
     nome: row.nome,
     telefone: row.telefone,
@@ -51,9 +55,12 @@ export interface Profissional {
   dataInicio?: string;
   ativo: boolean;
   observacoes?: string;
+  servicoIds: string[];
 }
 
-export function toProfissional(row: ProfissionalDb): Profissional {
+export function toProfissional(
+  row: ProfissionalDb & { servicos?: { id: string }[] }
+): Profissional {
   return {
     id: row.id,
     nome: row.nome,
@@ -64,6 +71,45 @@ export function toProfissional(row: ProfissionalDb): Profissional {
     especialidades: row.especialidades ?? undefined,
     cor: row.cor,
     dataInicio: row.dataInicio?.toISOString().slice(0, 10),
+    ativo: row.ativo,
+    observacoes: row.observacoes ?? undefined,
+    servicoIds: row.servicos?.map((s) => s.id) ?? [],
+  };
+}
+
+export interface CategoriaServico {
+  id: string;
+  nome: string;
+}
+
+export function toCategoriaServico(row: CategoriaServicoDb): CategoriaServico {
+  return {
+    id: row.id,
+    nome: row.nome,
+  };
+}
+
+export interface Servico {
+  id: string;
+  nome: string;
+  idCategoria: string;
+  categoriaNome?: string;
+  duracaoMinutos: number;
+  preco: number;
+  ativo: boolean;
+  observacoes?: string;
+}
+
+export function toServico(
+  row: ServicoDb & { categoria?: CategoriaServicoDb }
+): Servico {
+  return {
+    id: row.id,
+    nome: row.nome,
+    idCategoria: row.idCategoria,
+    categoriaNome: row.categoria?.nome,
+    duracaoMinutos: row.duracaoMinutos,
+    preco: Number(row.preco),
     ativo: row.ativo,
     observacoes: row.observacoes ?? undefined,
   };

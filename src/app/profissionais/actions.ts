@@ -5,6 +5,17 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { profissionalSchema } from "@/lib/validations/profissional";
 
+async function servicoIdsValidos(idSalao: string, servicoIds: string[] | undefined) {
+  if (!servicoIds || servicoIds.length === 0) return [];
+
+  const servicos = await prisma.servico.findMany({
+    where: { id: { in: servicoIds }, idSalao },
+    select: { id: true },
+  });
+
+  return servicos.map((s) => s.id);
+}
+
 export async function criarProfissional(data: unknown) {
   const session = await auth();
   if (!session) {
@@ -16,14 +27,17 @@ export async function criarProfissional(data: unknown) {
     return { error: "Dados inválidos." };
   }
 
-  const { dataInicio, cpf, ...rest } = parsed.data;
+  const { dataInicio, cpf, servicoIds, ...rest } = parsed.data;
+  const idsValidos = await servicoIdsValidos(session.user.idSalao, servicoIds);
 
   try {
     await prisma.profissional.create({
       data: {
         ...rest,
+        idSalao: session.user.idSalao,
         cpf: cpf ? cpf : undefined,
         dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+        servicos: { connect: idsValidos.map((id) => ({ id })) },
       },
     });
   } catch (error) {
@@ -53,7 +67,17 @@ export async function atualizarProfissional(id: string, data: unknown) {
     return { error: "Dados inválidos." };
   }
 
-  const { dataInicio, cpf, ...rest } = parsed.data;
+  const existente = await prisma.profissional.findFirst({
+    where: { id, idSalao: session.user.idSalao },
+    select: { id: true },
+  });
+
+  if (!existente) {
+    return { error: "Profissional não encontrado." };
+  }
+
+  const { dataInicio, cpf, servicoIds, ...rest } = parsed.data;
+  const idsValidos = await servicoIdsValidos(session.user.idSalao, servicoIds);
 
   try {
     await prisma.profissional.update({
@@ -62,6 +86,7 @@ export async function atualizarProfissional(id: string, data: unknown) {
         ...rest,
         cpf: cpf ? cpf : null,
         dataInicio: dataInicio ? new Date(dataInicio) : null,
+        servicos: { set: idsValidos.map((id) => ({ id })) },
       },
     });
   } catch (error) {
