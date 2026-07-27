@@ -23,6 +23,7 @@ model Salao {
   profissionais     Profissional[]
   categoriasServico CategoriaServico[]
   servicos          Servico[]
+  agendamentos      Agendamento[]
 
   @@map("saloes")
 }
@@ -63,6 +64,8 @@ model Cliente {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  agendamentos Agendamento[]
+
   @@unique([idSalao, cpf])
   @@index([idSalao])
   @@map("clientes")
@@ -85,7 +88,8 @@ model Profissional {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  servicos Servico[]
+  servicos     Servico[]
+  agendamentos Agendamento[]
 
   @@unique([idSalao, cpf])
   @@index([idSalao])
@@ -122,9 +126,33 @@ model Servico {
   updatedAt      DateTime         @updatedAt
 
   profissionais Profissional[]
+  agendamentos  Agendamento[]
 
   @@unique([idSalao, nome])
   @@index([idSalao])
   @@index([idCategoria])
   @@map("servicos")
+}
+
+model Agendamento {
+  id             String       @id @default(cuid())
+  idSalao        String
+  salao          Salao        @relation(fields: [idSalao], references: [id])
+  idCliente      String
+  cliente        Cliente      @relation(fields: [idCliente], references: [id])
+  idProfissional String
+  profissional   Profissional @relation(fields: [idProfissional], references: [id])
+  idServico      String
+  servico        Servico      @relation(fields: [idServico], references: [id])
+  inicio         DateTime
+  fim            DateTime
+  status         String       @default("agendado")
+  observacoes    String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([idSalao])
+  @@index([idProfissional, inicio])
+  @@index([idCliente])
+  @@map("agendamentos")
 }

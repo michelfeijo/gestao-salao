@@ -3,7 +3,9 @@ import type {
   Profissional as ProfissionalDb,
   CategoriaServico as CategoriaServicoDb,
   Servico as ServicoDb,
+  Agendamento as AgendamentoDb,
 } from "@/generated/prisma/client";
+import type { AgendamentoStatus } from "@/lib/validations/agendamento";
 
 export interface Cliente {
   id: string;
@@ -111,6 +113,46 @@ export function toServico(
     duracaoMinutos: row.duracaoMinutos,
     preco: Number(row.preco),
     ativo: row.ativo,
+    observacoes: row.observacoes ?? undefined,
+  };
+}
+
+export interface Agendamento {
+  id: string;
+  idCliente: string;
+  clienteNome: string;
+  idProfissional: string;
+  profissionalNome: string;
+  profissionalCor: string;
+  idServico: string;
+  servicoNome: string;
+  servicoDuracaoMinutos: number;
+  inicio: string;
+  fim: string;
+  status: AgendamentoStatus;
+  observacoes?: string;
+}
+
+export function toAgendamento(
+  row: AgendamentoDb & {
+    cliente: { nome: string };
+    profissional: { nome: string; cor: string };
+    servico: { nome: string; duracaoMinutos: number };
+  }
+): Agendamento {
+  return {
+    id: row.id,
+    idCliente: row.idCliente,
+    clienteNome: row.cliente.nome,
+    idProfissional: row.idProfissional,
+    profissionalNome: row.profissional.nome,
+    profissionalCor: row.profissional.cor,
+    idServico: row.idServico,
+    servicoNome: row.servico.nome,
+    servicoDuracaoMinutos: row.servico.duracaoMinutos,
+    inicio: row.inicio.toISOString(),
+    fim: row.fim.toISOString(),
+    status: row.status as AgendamentoStatus,
     observacoes: row.observacoes ?? undefined,
   };
 }
